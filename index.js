@@ -74,7 +74,7 @@ function checkItems() {
                     const vistaDiscount = vista < item.vista;
                     const parcDiscount = parc < item.parc;
                     const channel = await getChannel(item.id);
-                    log(`🛒 ${item.name} ${item.vista && item.parc ? `mudou de preço. De ${intl.format(item.vista)} à vista ou ${intl.format(item.parc)} parcelando para ${vista && parc ? `${intl.format(vista)} à vista (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)}) ou ${intl.format(parc)} parcelando (${parcDiscount ? "-" : "+"}${intl.format(diffParc)}).` : "indisponível."}` : `ficou disponível por ${intl.format(vista)} à vista (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)}) ou ${intl.format(parc)} parcelando (${parcDiscount ? "-" : "+"}${intl.format(diffParc)}).`}`);
+                    log(`🛒 ${item.name} ${item.vista && item.parc ? `mudou de preço. De ${intl.format(item.vista)} à vista ou ${intl.format(item.parc)} parcelando para ${vista && parc ? `${intl.format(vista)} à vista (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)}) ou ${intl.format(parc)} parcelando (${parcDiscount ? "-" : "+"}${intl.format(diffParc)}).` : "ficou indisponível."}` : `ficou disponível por ${intl.format(vista)} à vista ou ${intl.format(parc)} parcelando.`}`);
                     send(channel, { content: "-# ||@everyone||", embeds: [ new EmbedBuilder()
                         .setTitle(item.name)
                         .setURL(item.url)
@@ -96,8 +96,7 @@ function checkItems() {
 };
 
 client.once("ready", async () => {
-    log("🟢 Online.");
-    console.log(`🟢 Online as ${client.user.tag}`);
+    console.log(`🟢 Online as ${client.user.tag}, loaded ${items.length} items`);
     category = await client.channels.fetch(process.env.category);
     if (!category || category.type !== 4) {
         console.error('Invalid category ID. Please input one in .env and restart.');
@@ -108,7 +107,6 @@ client.once("ready", async () => {
     for (let evt of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
         process.on(evt, async function () {
             process.stdin.resume();
-            log("🔴 Offline.");
             if (category.name != "offline 🔴") await category.setName("offline 🔴");
             process.exit();
         });
