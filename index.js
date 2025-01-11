@@ -15,7 +15,10 @@ const saveItems = () => writeFileSync("items.json", JSON.stringify(items));
 const log = (data, error) => appendFileSync(`${error ? "errors" : "logs"}.txt`, `[${new Date().toISOString()}] ${data}\n`);
 const send = (channel, data) => channel.send(data).catch(err => {
     log(`❌ Error sending message: ${err.message}, ${err.stack || 'no stack trace available'}`, true);
+    errorCount++;
 });
+let priceChanges = 0;
+let errorCount = 0;
 let channels = {};
 let nextCheck;
 let category;
@@ -23,7 +26,7 @@ let category;
 const app = express();
 app.use(express.static("public"));
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.get("/info", (_, res) => res.json({ nextCheck: nextCheck, startTime: startTime }));
+app.get("/info", (_, res) => res.json({ priceChanges: priceChanges, errorCount: errorCount, nextCheck: nextCheck, startTime: startTime }));
 app.get("/errors", (_, res) => res.sendFile(path.join(__dirname, "./errors.txt")));
 app.get("/logs", (_, res) => res.sendFile(path.join(__dirname, "./logs.txt")));
 app.get("/username", (_, res) => res.send(client.user.tag));
@@ -74,21 +77,24 @@ function checkItems() {
                     const vistaDiscount = vista < item.vista;
                     const parcDiscount = parc < item.parc;
                     const channel = await getChannel(item.id);
-                    log(`🛒 ${item.name} ${item.vista && item.parc ? `mudou de preço. De ${intl.format(item.vista)} à vista ou ${intl.format(item.parc)} parcelando para ${vista && parc ? `${intl.format(vista)} à vista (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)}) ou ${intl.format(parc)} parcelando (${parcDiscount ? "-" : "+"}${intl.format(diffParc)}).` : "ficou indisponível."}` : `ficou disponível por ${intl.format(vista)} à vista ou ${intl.format(parc)} parcelando.`}`);
                     send(channel, { content: "-# ||@everyone||", embeds: [ new EmbedBuilder()
                         .setTitle(item.name)
                         .setURL(item.url)
                         .setColor(item.vista > 0 && item.parc > 0 ? (vista > 0 && parc > 0 ? (vistaDiscount && parcDiscount ? 0x00ff00 : 0xff0000) : 0x000000) : 0xffff00)
                         .addFields({ name: "Preço à vista", value: vista > 0 ? `${intl.format(vista)}${item.vista > 0 ? ` (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)})` : ""}` : "Indisponível", inline: true }, { name: "Preço parcelado", value: parc > 0 ? `${intl.format(parc)}${item.parc > 0 ? ` (${parcDiscount ? "-" : "+"}${intl.format(diffParc)})` : ""}` : "Indisponível", inline: true })
                         .setAuthor({ name: providers[item.provider].name, iconURL: providers[item.provider].icon })
-                        .setImage(item.image) ]});
-                    item.vista = vista;
-                    item.parc = parc;
-                    saveItems();
+                        .setImage(item.image) ]}).then(() => {
+                            log(`${vista && parc ? (item.vista && item.parc ? "🟡" : "🟢") : "🔴"} ${item.name} ${item.vista && item.parc ? `mudou de preço. De ${intl.format(item.vista)} à vista ou ${intl.format(item.parc)} parcelando para ${vista && parc ? `${intl.format(vista)} à vista (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)}) ou ${intl.format(parc)} parcelando (${parcDiscount ? "-" : "+"}${intl.format(diffParc)}).` : "ficou indisponível."}` : `ficou disponível por ${intl.format(vista)} à vista ou ${intl.format(parc)} parcelando.`}`);
+                            priceChanges++;
+                            item.vista = vista;
+                            item.parc = parc;
+                            saveItems();
+                        });
                 };
             })
             .catch(error => {
                 log(`❌ Error fetching data: ${error.message}, ${error.stack || 'no stack trace available'}`, true);
+                errorCount++;
             });
     });
     nextCheck = new Date().getTime() + timeout
@@ -113,9 +119,11 @@ client.once("ready", async () => {
     };
     process.on('unhandledRejection', (reason, promise) => {
         log(`❌ Unhandled Rejection at ${promise}: ${reason} (${reason.message || 'no message'}, ${reason.stack || 'no stack'})`, true);
+        errorCount++;
     });
     process.on('uncaughtException', (err) => {
         log(`❌ Uncaught Exception: ${err.message}, ${err.stack}`, true);
+        errorCount++;
     });
     await checkChannels();
     checkItems();

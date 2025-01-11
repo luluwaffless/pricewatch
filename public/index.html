@@ -5,9 +5,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="icon" type="image/x-icon" href="pushinp.png">
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
             body {
-                font-family: "Open Sans";
+                font-family: monospace;
                 margin: 20px;
                 background-color: #0c0c0d;
                 color: #e6e6e6;
@@ -21,10 +20,16 @@
                 margin: auto;
                 padding: 20px;
                 background: #191919;
+                border: 1px solid rgba(255, 255, 255, 0.2);
                 border-radius: 10px;
                 box-shadow: 0 0 10px rgba(0, 0, 0, 1);
             }
             a { color: #598d59; }
+            #as { font-size: small; font-weight: normal; color: #737373; }
+            #priceChanges { color: #ffff80 }
+            #errorCount { color: #ff8080 }
+            #nextCheck { color: #80ff80 }
+            #uptime { color: #8080ff }
         </style>
         <script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
         <title>price watch</title>
@@ -34,11 +39,15 @@
             <nav>
                 <a href="errors">errors</a> <a href="logs">logs</a> <a href="providers">providers</a> <a href="channels">channels</a> <a href="items">items</a>
             </nav>
-            <h1>price watch<br><span style="font-size: small; font-weight: normal; color: #737373;" id="as">logged in as </span></h1>
+            <h1>price watch<br><span id="as">logged in as </span></h1>
+            <span>price changes: <b id="priceChanges"></b></span><br>
+            <span>error count: <b id="errorCount"></b></span><br>
             <span>next check: <b id="nextCheck"></b></span><br>
             <span>uptime: <b id="uptime"></b></span><br>
         </div>
         <script type="text/javascript">
+            const priceChanges = document.getElementById("priceChanges");
+            const errorCount = document.getElementById("errorCount");
             const nextCheck = document.getElementById("nextCheck");
             const uptime = document.getElementById("uptime");
             const as = document.getElementById("as");
@@ -70,6 +79,8 @@
             $.ajax('/username', { success: (username) => as.innerHTML += username });
             setInterval(() => {
                 $.ajax('/info', { success: (info) => {
+                    priceChanges.innerHTML = info.priceChanges;
+                    errorCount.innerHTML = info.errorCount;
                     nextCheck.innerHTML = timeUntil(info.nextCheck);
                     uptime.innerHTML = timeSince(info.startTime);
                 }});
