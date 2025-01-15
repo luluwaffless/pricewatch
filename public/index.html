@@ -44,6 +44,7 @@
             <span>error count: <b id="errorCount"></b></span><br>
             <span>next check: <b id="nextCheck"></b></span><br>
             <span>uptime: <b id="uptime"></b></span><br>
+            <a href="/" onclick="$.ajax({url: '/info', method: 'PUT'})">reset</a>
         </div>
         <script type="text/javascript">
             const priceChanges = document.getElementById("priceChanges");

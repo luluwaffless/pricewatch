@@ -27,6 +27,7 @@ const app = express();
 app.use(express.static("public"));
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.get("/info", (_, res) => res.json({ priceChanges: priceChanges, errorCount: errorCount, nextCheck: nextCheck, startTime: startTime }));
+app.put("/info", (_, res) => { priceChanges = 0; errorCount = 0; res.sendStatus(200); });
 app.get("/errors", (_, res) => res.sendFile(path.join(__dirname, "./errors.txt")));
 app.get("/logs", (_, res) => res.sendFile(path.join(__dirname, "./logs.txt")));
 app.get("/username", (_, res) => res.send(client.user.tag));
