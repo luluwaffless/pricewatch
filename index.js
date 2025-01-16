@@ -84,14 +84,14 @@ function checkItems() {
                         .setColor(item.vista > 0 && item.parc > 0 ? (vista > 0 && parc > 0 ? (vistaDiscount && parcDiscount ? 0x00ff00 : 0xff0000) : 0x000000) : 0xffff00)
                         .addFields({ name: "Preço à vista", value: vista > 0 ? `${intl.format(vista)}${item.vista > 0 ? ` (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)})` : ""}` : "Indisponível", inline: true }, { name: "Preço parcelado", value: parc > 0 ? `${intl.format(parc)}${item.parc > 0 ? ` (${parcDiscount ? "-" : "+"}${intl.format(diffParc)})` : ""}` : "Indisponível", inline: true })
                         .setAuthor({ name: providers[item.provider].name, iconURL: providers[item.provider].icon })
-                        .setImage(item.image) ]})
-                        .setFooter({ text: `Item #${items.indexOf(item) - 1}` }).then(() => {
+                        .setFooter({ text: `Item #${items.indexOf(item) - 1}` })
+                        .setImage(item.image) ]}).then(() => {
                             log(`${vista && parc ? (item.vista && item.parc ? "🟡" : "🟢") : "🔴"} ${item.name} ${item.vista && item.parc ? `mudou de preço. De ${intl.format(item.vista)} à vista ou ${intl.format(item.parc)} parcelando para ${vista && parc ? `${intl.format(vista)} à vista (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)}) ou ${intl.format(parc)} parcelando (${parcDiscount ? "-" : "+"}${intl.format(diffParc)}).` : "indisponível."}` : `ficou disponível por ${intl.format(vista)} à vista ou ${intl.format(parc)} parcelando.`}`);
                             priceChanges++;
                             item.vista = vista;
                             item.parc = parc;
                             saveItems();
-                        });
+                        }); // this should be final testing, after that just one more thing and im done
                 };
             })
             .catch(error => {
