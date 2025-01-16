@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, appendFileSync } from "node:fs";
-import { Client, GatewayIntentBits, EmbedBuilder } from 'discord.js';
+import { Client, GatewayIntentBits, EmbedBuilder, REST, Routes, ApplicationCommandOptionType } from 'discord.js';
 import { fileURLToPath } from 'node:url';
 import providers from "./providers.js";
 import express from "express";
@@ -84,7 +84,8 @@ function checkItems() {
                         .setColor(item.vista > 0 && item.parc > 0 ? (vista > 0 && parc > 0 ? (vistaDiscount && parcDiscount ? 0x00ff00 : 0xff0000) : 0x000000) : 0xffff00)
                         .addFields({ name: "Preço à vista", value: vista > 0 ? `${intl.format(vista)}${item.vista > 0 ? ` (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)})` : ""}` : "Indisponível", inline: true }, { name: "Preço parcelado", value: parc > 0 ? `${intl.format(parc)}${item.parc > 0 ? ` (${parcDiscount ? "-" : "+"}${intl.format(diffParc)})` : ""}` : "Indisponível", inline: true })
                         .setAuthor({ name: providers[item.provider].name, iconURL: providers[item.provider].icon })
-                        .setImage(item.image) ]}).then(() => {
+                        .setImage(item.image) ]})
+                        .setFooter({ text: `Item #${items.indexof(item) - 1}` }).then(() => {
                             log(`${vista && parc ? (item.vista && item.parc ? "🟡" : "🟢") : "🔴"} ${item.name} ${item.vista && item.parc ? `mudou de preço. De ${intl.format(item.vista)} à vista ou ${intl.format(item.parc)} parcelando para ${vista && parc ? `${intl.format(vista)} à vista (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)}) ou ${intl.format(parc)} parcelando (${parcDiscount ? "-" : "+"}${intl.format(diffParc)}).` : "indisponível."}` : `ficou disponível por ${intl.format(vista)} à vista ou ${intl.format(parc)} parcelando.`}`);
                             priceChanges++;
                             item.vista = vista;
@@ -131,4 +132,54 @@ client.once("ready", async () => {
     app.listen(Number(process.env.port), () => console.log(`🟢 http://localhost${process.env.port != "80" ? `:${process.env.port}` : ""}/`));
 });
 
-client.login(process.env.token);
+client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isCommand() || interaction.commandName !== 'sum') return;
+    try {
+        const sumInput = interaction.options.getString('sum');
+        const numbers = sumInput
+            .split('+')
+            .map((n) => parseFloat(n.trim()))
+            .filter((n) => !isNaN(n));
+        if (numbers.length === 0) {
+            return interaction.reply({
+                content: '❌ Por favor, forneça uma lista de número de itens válidos, separados por "+".',
+                ephemeral: true,
+            });
+        };
+        let vistaStr = [];
+        let parcStr = [];
+        let vista = 0;
+        let parc = 0;
+        for (const i of numbers) {
+            vistaStr.push(`**[${items[i - 1].name}](<${items[i - 1].url}>) (${intl.format(items[i - 1].vista)})**`);
+            parcStr.push(`**[${items[i - 1].name}](<${items[i - 1].url}>) (${intl.format(items[i - 1].parc)})**`);
+            vista += items[i - 1].vista;
+            parc += items[i - 1].vista;
+        };
+        const type = interaction.options.getString('type') || 'both';
+        await interaction.reply({
+            content: type == 'vista' ? `${vistaStr.join(" + ")} = **${intl.format(vista)}**` : type == 'parc' ? `${parcStr.join(" + ")} = **${intl.format(parcStr)}**` : `\`À vista:\` ${vistaStr.join(" + ")} = **${intl.format(vista)}**\n\`Parcelando\`: ${parcStr.join(" + ")} = **${intl.format(parcStr)}**`,
+            ephemeral: true
+        });
+    } catch (error) {
+        log(`❌ Error running command: ${error.message}, ${error.stack || 'no stack trace available'}`, true);
+        errorCount++;
+        await interaction.reply({
+            content: '❌ Ocorreu um erro ao processar seu comando. Tente novamente mais tarde.',
+            ephemeral: true
+        });
+    };
+});
+
+new Promise(async (resolve, reject) => {
+    const rest = new REST({ version: '10' }).setToken(process.env.token);
+    try {
+        const put = await rest.put(Routes.applicationCommands(process.env.client), { body: [{ name: 'sum', description: 'Soma do preço de itens específicos, exemplo: "1+2+4" retornaria o total dos itens 1, 2 e 4.', options: [{ name: 'sum', description: 'Lista de itens para somar, separe cada um com um "+".', type: ApplicationCommandOptionType.String, required: true }, { name: 'type', description: 'Quais valores somar.', type: ApplicationCommandOptionType.String, required: false, choices: [{ name: "Ambos", value: "both" }, { name: "À vista", value: "vista" }, { name: "Parcelando", value: "parc" }]}]}]});
+        resolve(put);
+    } catch (error) {
+        reject(error);
+    };
+}).then(() => client.login(process.env.token)).catch((error) => {
+    log(`❌ Error loading command: ${error.message}, ${error.stack || 'no stack trace available'}`, true);
+    errorCount++;
+});
