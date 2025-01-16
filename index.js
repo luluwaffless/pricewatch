@@ -85,7 +85,7 @@ function checkItems() {
                         .addFields({ name: "Preço à vista", value: vista > 0 ? `${intl.format(vista)}${item.vista > 0 ? ` (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)})` : ""}` : "Indisponível", inline: true }, { name: "Preço parcelado", value: parc > 0 ? `${intl.format(parc)}${item.parc > 0 ? ` (${parcDiscount ? "-" : "+"}${intl.format(diffParc)})` : ""}` : "Indisponível", inline: true })
                         .setAuthor({ name: providers[item.provider].name, iconURL: providers[item.provider].icon })
                         .setImage(item.image) ]})
-                        .setFooter({ text: `Item #${items.indexof(item) - 1}` }).then(() => {
+                        .setFooter({ text: `Item #${items.indexOf(item) - 1}` }).then(() => {
                             log(`${vista && parc ? (item.vista && item.parc ? "🟡" : "🟢") : "🔴"} ${item.name} ${item.vista && item.parc ? `mudou de preço. De ${intl.format(item.vista)} à vista ou ${intl.format(item.parc)} parcelando para ${vista && parc ? `${intl.format(vista)} à vista (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)}) ou ${intl.format(parc)} parcelando (${parcDiscount ? "-" : "+"}${intl.format(diffParc)}).` : "indisponível."}` : `ficou disponível por ${intl.format(vista)} à vista ou ${intl.format(parc)} parcelando.`}`);
                             priceChanges++;
                             item.vista = vista;
@@ -158,7 +158,7 @@ client.on('interactionCreate', async (interaction) => {
         };
         const type = interaction.options.getString('type') || 'both';
         await interaction.reply({
-            content: type == 'vista' ? `${vistaStr.join(" + ")} = **${intl.format(vista)}**` : type == 'parc' ? `${parcStr.join(" + ")} = **${intl.format(parcStr)}**` : `\`À vista:\` ${vistaStr.join(" + ")} = **${intl.format(vista)}**\n\`Parcelando\`: ${parcStr.join(" + ")} = **${intl.format(parcStr)}**`,
+            content: type == 'vista' ? `${vistaStr.join(" + ")} = **${intl.format(vista)}**` : type == 'parc' ? `${parcStr.join(" + ")} = **${intl.format(parc)}**` : `\`À vista:\` ${vistaStr.join(" + ")} = **${intl.format(vista)}**\n\`Parcelando\`: ${parcStr.join(" + ")} = **${intl.format(parc)}**`,
             ephemeral: true
         });
     } catch (error) {

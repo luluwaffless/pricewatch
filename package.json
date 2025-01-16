@@ -1,6 +1,6 @@
 {
   "name": "pricewatch",
-  "version": "3.0.0a",
+  "version": "3.0.0b",
   "main": "index.js",
   "type": "module",
   "scripts": {
