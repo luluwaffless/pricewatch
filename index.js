@@ -202,14 +202,13 @@ client.on('interactionCreate', async (interaction) => {
         let vista = 0;
         let parc = 0;
         for (const i of numbers) {
-            vistaStr.push(`**[${items[i - 1].name.split(',')[0]}](<${items[i - 1].url}>) (${intl.format(items[i - 1].vista)})**`);
-            parcStr.push(`**[${items[i - 1].name.split(',')[0]}](<${items[i - 1].url}>) (${intl.format(items[i - 1].parc)})**`);
+            vistaStr.push(`**${intl.format(items[i - 1].vista)}**`);
+            parcStr.push(`**${intl.format(items[i - 1].parc)}**`);
             vista += items[i - 1].vista;
             parc += items[i - 1].parc;
         };
-        const type = interaction.options.getString('type') || 'both';
         await interaction.reply({
-            content: type == 'vista' ? `${vistaStr.join(" + ")} = **${intl.format(vista)}**` : type == 'parc' ? `${parcStr.join(" + ")} = **${intl.format(parc)}**` : `\`À vista:\` ${vistaStr.join(" + ")} = **${intl.format(vista)}**\n\n\`Parcelando\`: ${parcStr.join(" + ")} = **${intl.format(parc)}**`,
+            content: `\`À vista:\` ${vistaStr.join(" + ")} = **${intl.format(vista)}**\n\n\`Parcelando\`: ${parcStr.join(" + ")} = **${intl.format(parc)}**`,
             ephemeral: true
         });
     } catch (error) {
@@ -225,7 +224,7 @@ client.on('interactionCreate', async (interaction) => {
 new Promise(async (resolve, reject) => {
     const rest = new REST({ version: '10' }).setToken(process.env.token);
     try {
-        const put = await rest.put(Routes.applicationCommands(process.env.client), { body: [{ name: 'sum', description: 'Soma do preço de itens específicos, exemplo: "1+2+4" retornaria o total dos itens 1, 2 e 4.', options: [{ name: 'sum', description: 'Lista de itens para somar, separe cada um com um "+".', type: ApplicationCommandOptionType.String, required: true }, { name: 'type', description: 'Quais valores somar.', type: ApplicationCommandOptionType.String, required: false, choices: [{ name: "Ambos", value: "both" }, { name: "À vista", value: "vista" }, { name: "Parcelando", value: "parc" }]}]}]});
+        const put = await rest.put(Routes.applicationCommands(process.env.client), { body: [{ name: 'sum', description: 'Soma do preço de itens específicos, exemplo: "1+2+4" retornaria o total dos itens 1, 2 e 4.', options: [{ name: 'sum', description: 'Lista de itens para somar, separe cada um com um "+".', type: ApplicationCommandOptionType.String, required: true }]}]});
         resolve(put);
     } catch (error) {
         reject(error);
