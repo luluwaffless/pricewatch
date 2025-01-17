@@ -78,6 +78,7 @@
                 return parts.join(':');
             };
             $.ajax('/username', { success: (username) => as.innerHTML += username });
+            $.ajax('/version', { success: (data) => as.innerHTML += `<br>v${data.version}${data.updateNeeded ? " ⚠️" : ""}` });
             setInterval(() => {
                 $.ajax('/info', { success: (info) => {
                     priceChanges.innerHTML = info.priceChanges;

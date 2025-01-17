@@ -109,7 +109,7 @@ function checkItems() {
 
 async function checkBotUpdates() {
     if (updateNeeded) return;
-    await axios.get("https://raw.githubusercontent.com/luluwaffless/pricewatch/refs/heads/main/version")
+    await axios.get(`https://raw.githubusercontent.com/luluwaffless/pricewatch/refs/heads/main/version?${new Date().getTime()}`)
         .then(function(response) {
             if (response.data.trim() != version.trim()) {
                 updateNeeded = true;
