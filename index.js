@@ -135,7 +135,7 @@ async function updateItems(goingOffline) {
     const embed = new EmbedBuilder()
         .setColor(goingOffline ? 0xff0000 : 0x00ff00)
         .setTitle("price watch")
-        .setDescription(`Próxima verificação <t:${nextCheck}:R>`)
+        .setDescription(`Próxima verificação <t:${Math.floor(nextCheck / 1000)}:R>`)
         .addFields(fields) //error on this line
         .setFooter({text: `v${version}`});
     if (!statusMessage) {
@@ -165,6 +165,7 @@ client.once("ready", async () => {
         process.on(evt, async function () {
             process.stdin.resume();
             if (category.name != "offline 🔴") await category.setName("offline 🔴");
+            await updateItems(true);
             process.exit();
         });
     };
