@@ -1,7 +1,8 @@
-import { readFileSync, writeFileSync, appendFileSync } from "node:fs";
 import { Client, GatewayIntentBits, EmbedBuilder, REST, Routes, ApplicationCommandOptionType } from 'discord.js';
+import { readFileSync, writeFileSync, appendFileSync } from "node:fs";
 import { fileURLToPath } from 'node:url';
 import providers from "./providers.js";
+import config from "./config.js";
 import express from "express";
 import path from "node:path";
 import dotenv from "dotenv";
@@ -10,6 +11,7 @@ dotenv.config();
 const startTime = new Date().getTime();
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const intl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const version = readFileSync("version", "utf8");
 const items = JSON.parse(readFileSync("items.json", "utf8"));
 const saveItems = () => writeFileSync("items.json", JSON.stringify(items));
 const log = (data, error) => appendFileSync(`${error ? "errors" : "logs"}.txt`, `[${new Date().toISOString()}] ${data}\n`);
@@ -17,6 +19,7 @@ const send = (channel, data) => channel.send(data).catch(err => {
     log(`❌ Error sending message: ${err.message}, ${err.stack || 'no stack trace available'}`, true);
     errorCount++;
 });
+let updateNeeded = false;
 let priceChanges = 0;
 let errorCount = 0;
 let channels = {};
@@ -27,6 +30,7 @@ const app = express();
 app.use(express.static("public"));
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.get("/info", (_, res) => res.json({ priceChanges: priceChanges, errorCount: errorCount, nextCheck: nextCheck, startTime: startTime }));
+app.get("/version", (_, res) => res.json({ version: version, updateNeeded: updateNeeded }));
 app.put("/info", (_, res) => { priceChanges = 0; errorCount = 0; res.sendStatus(200); });
 app.get("/errors", (_, res) => res.sendFile(path.join(__dirname, "./errors.txt")));
 app.get("/logs", (_, res) => res.sendFile(path.join(__dirname, "./logs.txt")));
@@ -65,7 +69,7 @@ function checkChannels() {
     });
 };
 
-const timeout = Number(process.env.timeout) * 1000
+const timeout = config.timeout * 1000
 function checkItems() {
     items.forEach(item => {
         axios.get(item.url)
@@ -84,14 +88,14 @@ function checkItems() {
                         .setColor(item.vista > 0 && item.parc > 0 ? (vista > 0 && parc > 0 ? (vistaDiscount && parcDiscount ? 0x00ff00 : 0xff0000) : 0x000000) : 0xffff00)
                         .addFields({ name: "Preço à vista", value: vista > 0 ? `${intl.format(vista)}${item.vista > 0 ? ` (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)})` : ""}` : "Indisponível", inline: true }, { name: "Preço parcelado", value: parc > 0 ? `${intl.format(parc)}${item.parc > 0 ? ` (${parcDiscount ? "-" : "+"}${intl.format(diffParc)})` : ""}` : "Indisponível", inline: true })
                         .setAuthor({ name: providers[item.provider].name, iconURL: providers[item.provider].icon })
-                        .setFooter({ text: `Item #${items.indexOf(item) - 1}` })
+                        .setFooter({ text: `Item #${items.indexOf(item) + 1}` })
                         .setImage(item.image) ]}).then(() => {
                             log(`${vista && parc ? (item.vista && item.parc ? "🟡" : "🟢") : "🔴"} ${item.name} ${item.vista && item.parc ? `mudou de preço. De ${intl.format(item.vista)} à vista ou ${intl.format(item.parc)} parcelando para ${vista && parc ? `${intl.format(vista)} à vista (${vistaDiscount ? "-" : "+"}${intl.format(diffVista)}) ou ${intl.format(parc)} parcelando (${parcDiscount ? "-" : "+"}${intl.format(diffParc)}).` : "indisponível."}` : `ficou disponível por ${intl.format(vista)} à vista ou ${intl.format(parc)} parcelando.`}`);
                             priceChanges++;
                             item.vista = vista;
                             item.parc = parc;
                             saveItems();
-                        }); // this should be final testing, after that just one more thing and im done
+                        });
                 };
             })
             .catch(error => {
@@ -99,18 +103,64 @@ function checkItems() {
                 errorCount++;
             });
     });
-    nextCheck = new Date().getTime() + timeout
-    setTimeout(checkItems, timeout);
+    nextCheck = new Date().getTime() + timeout;
+    updateItems();
 };
 
+async function checkBotUpdates() {
+    if (updateNeeded) return;
+    await axios.get("https://raw.githubusercontent.com/luluwaffless/pricewatch/refs/heads/main/version")
+        .then(function(response) {
+            if (response.data.trim() != version.trim()) {
+                updateNeeded = true;
+                console.log(`⚠️ New version v${response.data.trim()}! Please update by using "git pull".`);
+            };
+        })
+        .catch(function (error) {
+            errorCount++;
+            log(`❌ Error fetching data: ${error.message}, ${error.stack || 'no stack trace available'}`, true);
+        });
+};
+
+let updating = false;
+let statusMessage;
+async function updateItems(goingOffline) {
+    if (updating) return;
+    updating = true
+    const fields = [];
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        fields.push({ name: `${i + 1}. (${item.name})[${item.url}] ${providers[item.provider].emoji}`, value: `\`À vista\`: ${intl.format(item.vista)}\n\`Parcelando\`: ${intl.format(item.parc)}` });
+    };
+    const embed = new EmbedBuilder()
+        .setColor(goingOffline ? 0xff0000 : 0x00ff00)
+        .setTitle("price watch")
+        .setDescription(`Próxima verificação <t:${nextCheck}:R>`)
+        .addFields(fields)
+        .setFooter({text: `v${version}`});
+    if (!statusMessage) {
+        const statusChannel = await client.channels.fetch(config.channel);
+        await statusChannel.bulkDelete(await statusChannel.messages.fetch({ limit: 100 }));
+        await statusChannel.send({ embeds: [embed] })
+            .then(message => {
+                statusMessage = message;
+            });
+    } else {
+        await statusMessage.edit({ embeds: [embed] });''
+    };
+    updating = false;
+};
+
+const startUp = (f, t) => { f(); setInterval(f, t); };
 client.once("ready", async () => {
     console.log(`🟢 Online as ${client.user.tag}, loaded ${items.length} items`);
-    category = await client.channels.fetch(process.env.category);
+    category = await client.channels.fetch(config.category);
     if (!category || category.type !== 4) {
         console.error('Invalid category ID. Please input one in .env and restart.');
         return process.exit();
     };
     if (category.name != "online 🟢") await category.setName("online 🟢");
+    statusChannel = await getChannel(config.channel);
 
     for (let evt of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
         process.on(evt, async function () {
@@ -128,8 +178,9 @@ client.once("ready", async () => {
         errorCount++;
     });
     await checkChannels();
-    checkItems();
-    app.listen(Number(process.env.port), () => console.log(`🟢 http://localhost${process.env.port != "80" ? `:${process.env.port}` : ""}/`));
+    startUp(checkItems, timeout);
+    if (config.checkUpdates) startUp(checkBotUpdates, timeout)
+    app.listen(Number(config.port), () => console.log(`🟢 http://localhost${config.port != "80" ? `:${config.port}` : ""}/`));
 });
 
 client.on('interactionCreate', async (interaction) => {
@@ -151,14 +202,14 @@ client.on('interactionCreate', async (interaction) => {
         let vista = 0;
         let parc = 0;
         for (const i of numbers) {
-            vistaStr.push(`**[${items[i - 1].name}](<${items[i - 1].url}>) (${intl.format(items[i - 1].vista)})**`);
-            parcStr.push(`**[${items[i - 1].name}](<${items[i - 1].url}>) (${intl.format(items[i - 1].parc)})**`);
+            vistaStr.push(`**[${items[i - 1].name.split(',')[0]}](<${items[i - 1].url}>) (${intl.format(items[i - 1].vista)})**`);
+            parcStr.push(`**[${items[i - 1].name.split(',')[0]}](<${items[i - 1].url}>) (${intl.format(items[i - 1].parc)})**`);
             vista += items[i - 1].vista;
-            parc += items[i - 1].vista;
+            parc += items[i - 1].parc;
         };
         const type = interaction.options.getString('type') || 'both';
         await interaction.reply({
-            content: type == 'vista' ? `${vistaStr.join(" + ")} = **${intl.format(vista)}**` : type == 'parc' ? `${parcStr.join(" + ")} = **${intl.format(parc)}**` : `\`À vista:\` ${vistaStr.join(" + ")} = **${intl.format(vista)}**\n\`Parcelando\`: ${parcStr.join(" + ")} = **${intl.format(parc)}**`,
+            content: type == 'vista' ? `${vistaStr.join(" + ")} = **${intl.format(vista)}**` : type == 'parc' ? `${parcStr.join(" + ")} = **${intl.format(parc)}**` : `\`À vista:\` ${vistaStr.join(" + ")} = **${intl.format(vista)}**\n\n\`Parcelando\`: ${parcStr.join(" + ")} = **${intl.format(parc)}**`,
             ephemeral: true
         });
     } catch (error) {
