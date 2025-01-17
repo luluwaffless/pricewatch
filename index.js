@@ -160,7 +160,6 @@ client.once("ready", async () => {
         return process.exit();
     };
     if (category.name != "online 🟢") await category.setName("online 🟢");
-    statusChannel = await getChannel(config.channel);
 
     for (let evt of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
         process.on(evt, async function () {
