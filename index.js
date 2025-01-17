@@ -130,13 +130,13 @@ async function updateItems(goingOffline) {
     const fields = [];
     for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        fields.push({ name: `${i + 1}. (${item.name})[${item.url}] ${providers[item.provider].emoji}`, value: `\`À vista\`: ${intl.format(item.vista)}\n\`Parcelando\`: ${intl.format(item.parc)}` });
+        fields.push({ name: `${i + 1}. ${item.name.split(",")[0]} ${providers[item.provider].emoji}`, value: `\`À vista\`: ${intl.format(item.vista)}\n\`Parcelando\`: ${intl.format(item.parc)}` });
     };
     const embed = new EmbedBuilder()
         .setColor(goingOffline ? 0xff0000 : 0x00ff00)
         .setTitle("price watch")
         .setDescription(`Próxima verificação <t:${nextCheck}:R>`)
-        .addFields(fields)
+        .addFields(fields) //error on this line
         .setFooter({text: `v${version}`});
     if (!statusMessage) {
         const statusChannel = await client.channels.fetch(config.channel);
@@ -178,7 +178,7 @@ client.once("ready", async () => {
     });
     await checkChannels();
     startUp(checkItems, timeout);
-    if (config.checkUpdates) startUp(checkBotUpdates, timeout)
+    if (config.checkUpdates) startUp(checkBotUpdates, timeout);
     app.listen(Number(config.port), () => console.log(`🟢 http://localhost${config.port != "80" ? `:${config.port}` : ""}/`));
 });
 
