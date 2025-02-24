@@ -25,8 +25,8 @@ export default {
         }
     },
     amazon: {
-        name: "amazon",
-        icon: "https://www.amazon.com.br/favicon.ico",
+        name: "Amazon",
+        icon: "https://www.amazon.com/favicon.ico",
         emoji: "📦",
         parser: (b) => {
             const $ = load(b);

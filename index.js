@@ -130,7 +130,7 @@ async function updateItems(goingOffline) {
     const fields = [];
     for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        fields.push({ name: `${i + 1}. ${item.name.split(",")[0]} ${providers[item.provider].emoji}`, value: `\`À vista\`: ${item.vista ? intl.format(item.vista) : "Indisponível"}\n\`Parcelando\`: ${item.parc ? intl.format(item.parc) : "Indisponível"}` });
+        fields.push({ name: `${i + 1}. ${item.name.split(",")[0]} ${providers[item.provider].emoji}`, value: `\`À vista\`: ${item.vista > 0 ? intl.format(item.vista) : "Indisponível"}\n\`Parcelando\`: ${item.parc > 0 ? intl.format(item.parc) : "Indisponível"}` });
     };
     const embed = new EmbedBuilder()
         .setColor(goingOffline ? 0xff0000 : 0x00ff00)
