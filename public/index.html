@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" type="image/x-icon" href="pushinp.png">
+        <style>
+            body {
+                font-family: monospace;
+                margin: 20px;
+                background-color: #0c0c0d;
+                color: #e6e6e6;
+                text-align: center;
+            }
+            .container {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                margin: auto;
+                padding: 20px;
+                background: #191919;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 10px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 1);
+            }
+            a { color: #598d59; }
+            #as { font-size: small; font-weight: normal; color: #737373; }
+            #priceChanges { color: #ffff80 }
+            #errorCount { color: #ff8080 }
+            #nextCheck { color: #80ff80 }
+            #uptime { color: #8080ff }
+        </style>
+        <script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
+        <title>price watch</title>
+    </head>
+    <body>
+        <div class="container">
+            <nav>
+                <a href="errors">errors</a> <a href="logs">logs</a> <a href="providers">providers</a> <a href="channels">channels</a> <a href="items">items</a>
+            </nav>
+            <h1>price watch<br><span id="as">logged in as </span></h1>
+            <span>price changes: <b id="priceChanges"></b></span><br>
+            <span>error count: <b id="errorCount"></b></span><br>
+            <span>next check: <b id="nextCheck"></b></span><br>
+            <span>uptime: <b id="uptime"></b></span><br>
+            <a href="/" onclick="$.ajax({url: '/info', method: 'PUT'})">reset</a>
+        </div>
+        <script type="text/javascript">
+            const priceChanges = document.getElementById("priceChanges");
+            const errorCount = document.getElementById("errorCount");
+            const nextCheck = document.getElementById("nextCheck");
+            const uptime = document.getElementById("uptime");
+            const as = document.getElementById("as");
+            function timeSince(timestamp) {
+                const now = new Date().getTime();
+                const diff = now - timestamp;
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                let parts = [];
+                if (hours) parts.push(hours);
+                if (minutes || hours) parts.push(minutes.toString().padStart(hours ? 2 : 1, '0'));
+                parts.push(seconds.toString().padStart(minutes || hours ? 2 : 1, '0'));
+                return parts.join(':');
+            };
+            function timeUntil(timestamp) {
+                const now = new Date().getTime();
+                const diff = timestamp - now;
+                if (diff < 1000) return 'checking...';
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                let parts = [];
+                if (hours) parts.push(hours);
+                if (minutes || hours) parts.push(minutes.toString().padStart(hours ? 2 : 1, '0'));
+                parts.push(seconds.toString().padStart(minutes || hours ? 2 : 1, '0'));
+                return parts.join(':');
+            };
+            $.ajax('/username', { success: (username) => as.innerHTML += username });
+            $.ajax('/version', { success: (data) => as.innerHTML += `<br>v${data.version}${data.updateNeeded ? " ⚠️" : ""}` });
+            setInterval(() => {
+                $.ajax('/info', { success: (info) => {
+                    priceChanges.innerHTML = info.priceChanges;
+                    errorCount.innerHTML = info.errorCount;
+                    nextCheck.innerHTML = timeUntil(info.nextCheck);
+                    uptime.innerHTML = timeSince(info.startTime);
+                }});
+            }, 1000);
+        </script>
+    </body>
+</html>
